@@ -1,5 +1,9 @@
 <Project>
   <PropertyGroup>
+    <RootNamespace>EMG.Extensions.Logging</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <Authors>EMG</Authors>
     <Company>EMG - Educations Media Group AB</Company>
   </PropertyGroup>
