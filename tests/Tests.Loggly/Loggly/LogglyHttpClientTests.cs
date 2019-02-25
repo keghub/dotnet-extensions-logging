@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -6,6 +7,7 @@ using AutoFixture;
 using AutoFixture.Idioms;
 using AutoFixture.NUnit3;
 using EMG.Extensions.Logging.Loggly;
+using Moq;
 using NUnit.Framework;
 using WorldDomination.Net.Http;
 

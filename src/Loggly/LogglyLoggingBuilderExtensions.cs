@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.Logging
 {
     public static class LogglyLoggingBuilderExtensions
     {
-        public static ILoggingBuilder AddLoggly(this ILoggingBuilder builder, IConfigurationSection configuration = null, Action<LogglyOptions> configureOptions = null)
+        public static ILoggingBuilder AddLoggly(this ILoggingBuilder builder, IConfiguration configuration = null, Action<LogglyOptions> configureOptions = null)
         {
             if (builder == null)
             {
@@ -52,17 +52,19 @@ namespace Microsoft.Extensions.Logging
 
             builder.Services.AddSingleton<ILogglyProcessor, LogglyProcessor>();
 
-            builder.Services.AddSingleton<ILogglyClient, LogglyHttpClient>(sp =>
-            {
-                var o = sp.GetRequiredService<LogglyOptions>();
-                var http = CreateHttpClient(o);
-
-                return new LogglyHttpClient(http, o);
-            });
+            builder.Services.AddSingleton(CreateLogglyClient);
 
             builder.Services.AddSingleton<ILoggerProvider, LogglyLoggerProvider>();
 
             return builder;
+        }
+
+        private static ILogglyClient CreateLogglyClient(IServiceProvider serviceProvider)
+        {
+            var o = serviceProvider.GetRequiredService<LogglyOptions>();
+            var http = CreateHttpClient(o);
+
+            return new LogglyHttpClient(http, o);
         }
 
         private static HttpClient CreateHttpClient(LogglyOptions options)
