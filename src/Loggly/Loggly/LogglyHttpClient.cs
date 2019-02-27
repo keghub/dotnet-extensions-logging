@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -10,6 +11,8 @@ namespace EMG.Extensions.Logging.Loggly
     public interface ILogglyClient
     {
         Task PublishAsync(LogglyMessage message);
+
+        Task PublishManyAsync(IEnumerable<LogglyMessage> messages);
     }
 
     public class LogglyHttpClient : ILogglyClient
@@ -27,7 +30,7 @@ namespace EMG.Extensions.Logging.Loggly
         {
             try
             {
-                using (var request = new HttpRequestMessage(HttpMethod.Post, string.Empty))
+                using (var request = new HttpRequestMessage(HttpMethod.Post, $"/inputs/{_options.ApiKey}/tag/{_options.Environment}"))
                 {
                     var content = JsonConvert.SerializeObject(FixData(message), SerializerSettings);
                     request.Content = new StringContent(content, _options.ContentEncoding, "application/json");
@@ -36,13 +39,41 @@ namespace EMG.Extensions.Logging.Loggly
                     {
                         if (!response.IsSuccessStatusCode)
                         {
-                            var state = new
-                            {
-                                response.StatusCode,
-                                response.ReasonPhrase,
-                                EndpointUrl = response.RequestMessage.RequestUri,
-                                Payload = message
-                            };
+
+                        }
+                    }
+                }
+            }
+            catch (Exception) when (_options.SuppressExceptions)
+            {
+
+            }
+        }
+
+        public async Task PublishManyAsync(IEnumerable<LogglyMessage> messages)
+        {
+            try
+            {
+                using (var request = new HttpRequestMessage(HttpMethod.Post, $"/bulk/{_options.ApiKey}/tag/bulk"))
+                {
+                    var tags = new List<string>();
+
+                    if (request.Headers.TryGetValues("X-LOGGLY-TAG", out var defaultTags))
+                    {
+                        tags.AddRange(defaultTags);
+                    }
+
+                    tags.Add(_options.Environment);
+                    request.Headers.Add("X-LOGGLY-TAG", tags);
+
+                    var fixedMessages = string.Join("\n", messages.Select(FixData).Select(s => JsonConvert.SerializeObject(s, SerializerSettings)));
+                    request.Content = new StringContent(fixedMessages, _options.ContentEncoding, "application/json");
+
+                    using (var response = await _http.SendAsync(request).ConfigureAwait(false))
+                    {
+                        if (!response.IsSuccessStatusCode)
+                        {
+
                         }
                     }
                 }
@@ -83,7 +114,7 @@ namespace EMG.Extensions.Logging.Loggly
         {
             TypeNameHandling = TypeNameHandling.None,
             NullValueHandling = NullValueHandling.Ignore,
-            Formatting = Formatting.Indented,
+            Formatting = Formatting.None,
             DefaultValueHandling = DefaultValueHandling.Ignore,
             DateTimeZoneHandling = DateTimeZoneHandling.Utc,
             DateFormatHandling = DateFormatHandling.IsoDateFormat,

@@ -35,7 +35,7 @@ namespace Tests.Loggly
 
             fixture.Register((LogglyOptions o) => new HttpClient(handler)
             {
-                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}/inputs/{o.ApiKey}/tag/{o.Environment}")
+                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}")
             });
 
             var sut = fixture.Create<LogglyHttpClient>();
@@ -58,7 +58,7 @@ namespace Tests.Loggly
 
             fixture.Register((LogglyOptions o) => new HttpClient(handler)
             {
-                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}/inputs/{o.ApiKey}/tag/{o.Environment}")
+                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}")
             });
 
             var sut = fixture.Create<LogglyHttpClient>();
@@ -81,7 +81,7 @@ namespace Tests.Loggly
 
             fixture.Register((LogglyOptions o) => new HttpClient(handler)
             {
-                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}/inputs/{o.ApiKey}/tag/{o.Environment}")
+                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}")
             });
 
             var sut = fixture.Create<LogglyHttpClient>();
@@ -104,7 +104,7 @@ namespace Tests.Loggly
 
             fixture.Register((LogglyOptions o) => new HttpClient(handler)
             {
-                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}/inputs/{o.ApiKey}/tag/{o.Environment}")
+                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}")
             });
 
             var sut = fixture.Create<LogglyHttpClient>();
@@ -112,6 +112,77 @@ namespace Tests.Loggly
             await sut.PublishAsync(message);
 
             Assert.That(registration.HttpResponseMessage.RequestMessage.RequestUri.AbsolutePath, Contains.Substring(options.Environment));
+        }
+
+        // ----
+
+        [Test, AutoMoqData]
+        public async Task Messages_are_published_to_given_host([Frozen] LogglyOptions options, IFixture fixture, LogglyMessage[] message)
+        {
+            var registration = new HttpMessageOptions
+            {
+                HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
+                HttpMethod = HttpMethod.Post
+            };
+
+            var handler = new FakeHttpMessageHandler(registration);
+
+            fixture.Register((LogglyOptions o) => new HttpClient(handler)
+            {
+                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}")
+            });
+
+            var sut = fixture.Create<LogglyHttpClient>();
+
+            await sut.PublishManyAsync(message);
+
+            Assert.That(registration.HttpResponseMessage.RequestMessage.RequestUri.Host, Contains.Substring(options.LogglyHost));
+        }
+
+        [Test, AutoMoqData]
+        public async Task Messages_are_published_to_given_scheme([Frozen] LogglyOptions options, IFixture fixture, LogglyMessage[] message)
+        {
+            var registration = new HttpMessageOptions
+            {
+                HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
+                HttpMethod = HttpMethod.Post
+            };
+
+            var handler = new FakeHttpMessageHandler(registration);
+
+            fixture.Register((LogglyOptions o) => new HttpClient(handler)
+            {
+                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}")
+            });
+
+            var sut = fixture.Create<LogglyHttpClient>();
+
+            await sut.PublishManyAsync(message);
+
+            Assert.That(registration.HttpResponseMessage.RequestMessage.RequestUri.Scheme, Contains.Substring(options.LogglyScheme));
+        }
+
+        [Test, AutoMoqData]
+        public async Task Messages_are_published_to_url_with_ApiKey([Frozen] LogglyOptions options, IFixture fixture, LogglyMessage[] message)
+        {
+            var registration = new HttpMessageOptions
+            {
+                HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
+                HttpMethod = HttpMethod.Post
+            };
+
+            var handler = new FakeHttpMessageHandler(registration);
+
+            fixture.Register((LogglyOptions o) => new HttpClient(handler)
+            {
+                BaseAddress = new Uri($"{o.LogglyScheme}://{o.LogglyHost}")
+            });
+
+            var sut = fixture.Create<LogglyHttpClient>();
+
+            await sut.PublishManyAsync(message);
+
+            Assert.That(registration.HttpResponseMessage.RequestMessage.RequestUri.AbsolutePath, Contains.Substring(options.ApiKey));
         }
     }
 }

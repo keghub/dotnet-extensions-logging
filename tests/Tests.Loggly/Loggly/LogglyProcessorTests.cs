@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AutoFixture.Idioms;
 using AutoFixture.NUnit3;
@@ -22,19 +25,19 @@ namespace Tests.Loggly
         {
             sut.EnqueueMessage(message);
 
-            await Task.Delay(TimeSpan.FromMilliseconds(10));
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
 
-            Mock.Get(client).Verify(p => p.PublishAsync(message));
+            Mock.Get(client).Verify(p => p.PublishManyAsync(It.Is<IEnumerable<LogglyMessage>>(m => m.Contains(message))));
         }
 
         [Test, AutoMoqData]
-        public void Message_is_published_after_adding_to_queue_when_disposed([Frozen] ILogglyClient client, LogglyProcessor sut, LogglyMessage message)
+        public void Message_is_not_published_after_adding_to_queue_when_disposed([Frozen] ILogglyClient client, LogglyProcessor sut, LogglyMessage message)
         {
             sut.Dispose();
 
             sut.EnqueueMessage(message);
 
-            Mock.Get(client).Verify(p => p.PublishAsync(message));
+            Mock.Get(client).Verify(p => p.PublishAsync(message), Times.Never);
         }
     }
 }

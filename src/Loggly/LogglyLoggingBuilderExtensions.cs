@@ -71,7 +71,7 @@ namespace Microsoft.Extensions.Logging
         {
             var http = new HttpClient
             {
-                BaseAddress = new Uri($"{options.LogglyScheme}://{options.LogglyHost}/inputs/{options.ApiKey}/tag/{options.Environment}")
+                BaseAddress = new Uri($"{options.LogglyScheme}://{options.LogglyHost}")
             };
 
             if (options.Tags.Any())

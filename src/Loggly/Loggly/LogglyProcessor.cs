@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 
 namespace EMG.Extensions.Logging.Loggly
 {
@@ -12,63 +12,32 @@ namespace EMG.Extensions.Logging.Loggly
 
     public class LogglyProcessor : ILogglyProcessor
     {
-        private const int MaxQueuedMessages = 1024;
-
         private readonly ILogglyClient _client;
-        private readonly BlockingCollection<LogglyMessage> _messageQueue = new BlockingCollection<LogglyMessage>(MaxQueuedMessages);
-        private readonly Thread _outputThread;
+        private readonly ISubject<LogglyMessage> _messageSubject = new Subject<LogglyMessage>();
+        private readonly IDisposable _subscription;
 
         public LogglyProcessor(ILogglyClient client)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
 
-            _outputThread = new Thread(ProcessLogQueue)
-            {
-                IsBackground = true
-            };
-
-            _outputThread.Start();
+            _subscription = _messageSubject.Buffer(TimeSpan.FromMilliseconds(50)).Subscribe(ProcessLogQueue);
         }
 
         public void EnqueueMessage(LogglyMessage message)
         {
-            if (!_messageQueue.IsAddingCompleted)
-            {
-                try
-                {
-                    _messageQueue.Add(message);
-                    return;
-                }
-                catch (InvalidOperationException)
-                {
-                    try
-                    {
-                        _messageQueue.CompleteAdding();
-                    }
-                    // ReSharper disable once EmptyGeneralCatchClause
-                    catch { }
-                }
-            }
-
-            _client.PublishAsync(message).GetAwaiter().GetResult();
+            _messageSubject.OnNext(message);
         }
 
         public void Dispose()
         {
-            _messageQueue.CompleteAdding();
-
-            try
-            {
-                _outputThread.Join(TimeSpan.FromMilliseconds(1500));
-            }
-            catch (TaskSchedulerException) { }
+            _subscription.Dispose();
         }
 
-        private async void ProcessLogQueue()
+        private async void ProcessLogQueue(IList<LogglyMessage> items)
         {
-            foreach (var item in _messageQueue.GetConsumingEnumerable())
+            if (items.Count > 0)
             {
-                await _client.PublishAsync(item);
+                await _client.PublishManyAsync(items);
             }
         }
     }
